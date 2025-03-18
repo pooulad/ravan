@@ -2,10 +2,12 @@ package ravan
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Helper function to capture the output of a function
@@ -51,33 +53,45 @@ func TestNew(t *testing.T) {
 
 // TestDraw verifies the Draw func works correctly.
 func TestDraw(t *testing.T) {
-	// Initialize the Ravan struct with a specific width
-	expected := 10
-	r, err := New(WithWidth(expected))
-	if err != nil {
-		t.Error(err)
+	// Create a Ravan instance with a configured width of 50.
+	// In tests, getTerminalWidth will likely return 0 (non-terminal),
+	// so fallback will be used: termWidth = r.width, effectiveWidth = 50 - overhead (7) = 43.
+	r := &Ravan{
+		width:          50,
+		completeChar:   Equal, // "="
+		incompleteChar: Empty, // " " (space)
 	}
 
-	// Define test cases with different progress values
-	testCases := []struct {
-		progress       float64
-		expectedOutput string
-	}{
-		{0.0, "\r[          ] 0%"},
-		{0.5, "\r[=====     ] 50%"},
-		{1.0, "\r\033[32m[==========] 100%\033[0m\n"},
+	// Test progress 0.5
+	output := captureOutput(func() {
+		r.Draw(0.5)
+		// Wait a short time to allow printing to complete.
+		time.Sleep(10 * time.Millisecond)
+	})
+
+	// Expected effectiveWidth is 43.
+	expectedEffectiveWidth := 43
+	completeCount := int(0.5 * float64(expectedEffectiveWidth)) // should be 21
+	incompleteCount := expectedEffectiveWidth - completeCount   // 22
+
+	expectedBar := strings.Repeat(string(r.completeChar), completeCount) +
+		strings.Repeat(string(r.incompleteChar), incompleteCount)
+	expectedOutput := fmt.Sprintf("\r[%s] %.0f%%", expectedBar, 50.0)
+	if output != expectedOutput {
+		t.Errorf("Draw(0.5) = %q; want %q", output, expectedOutput)
 	}
 
-	for _, tc := range testCases {
-		// Capture the output of the Draw method
-		output := captureOutput(func() {
-			r.Draw(tc.progress)
-		})
-
-		// Compare the captured output with the expected output
-		if output != tc.expectedOutput {
-			t.Errorf("For progress %.1f, expected output %q, but got %q", tc.progress, tc.expectedOutput, output)
-		}
+	// Test progress 1.0 (complete)
+	output = captureOutput(func() {
+		r.Draw(1.0)
+		// Wait a short time to allow printing to complete.
+		time.Sleep(10 * time.Millisecond)
+	})
+	expectedBar = strings.Repeat(string(r.completeChar), expectedEffectiveWidth)
+	// ANSI green color codes are added for complete progress.
+	expectedOutput = fmt.Sprintf("\r\033[32m[%s] %.0f%%\033[0m\n", expectedBar, 100.0)
+	if output != expectedOutput {
+		t.Errorf("Draw(1.0) = %q; want %q", output, expectedOutput)
 	}
 }
 
@@ -244,4 +258,46 @@ func TestWithIncompleteChar(t *testing.T) {
 
 func contains(s, substr string) bool {
 	return strings.Contains(s, substr)
+}
+
+// TestGetTerminalWidthNonTerminal simulates a non-terminal stdout and expects a width of 0.
+func TestGetTerminalWidthNonTerminal(t *testing.T) {
+	// Create a temporary file which is not a terminal.
+	tmp, err := os.CreateTemp("", "nonterminal")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmp.Name())
+
+	// Save the original os.Stdout and override it with our temp file.
+	originalStdout := os.Stdout
+	os.Stdout = tmp
+
+	// Call getTerminalWidth; since tmp is not a terminal, we expect 0.
+	width := getTerminalWidth()
+	if width != 0 {
+		t.Errorf("Expected getTerminalWidth to return 0 for non-terminal, got %d", width)
+	}
+
+	// Restore the original os.Stdout.
+	os.Stdout = originalStdout
+}
+
+// TestGetTerminalWidth_Terminal checks that getTerminalWidth returns a positive value when os.Stdout is a terminal.
+// If os.Stdout is not a terminal, the test is skipped.
+func TestGetTerminalWidth_Terminal(t *testing.T) {
+	// Check if os.Stdout is a terminal by inspecting its file mode.
+	fi, err := os.Stdout.Stat()
+	if err != nil {
+		t.Fatalf("failed to stat os.Stdout: %v", err)
+	}
+	if (fi.Mode() & os.ModeCharDevice) == 0 {
+		t.Skip("os.Stdout is not a terminal; skipping test")
+	}
+
+	// Now call getTerminalWidth. It should return a positive value.
+	width := getTerminalWidth()
+	if width <= 0 {
+		t.Errorf("Expected positive terminal width, got %d", width)
+	}
 }

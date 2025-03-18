@@ -2,7 +2,10 @@ package ravan
 
 import (
 	"fmt"
+	"os"
 	"strings"
+	"syscall"
+	"unsafe"
 )
 
 type BarCharacter string
@@ -15,10 +18,23 @@ const (
 	Plus        BarCharacter = "+"
 	Dash        BarCharacter = "-"
 	GreaterThan BarCharacter = ">"
+	LessThan    BarCharacter = "<"
 	Colon       BarCharacter = ":"
 	Exclamation BarCharacter = "!"
-	Dollar      BarCharacter = "$"
+	DollarSign  BarCharacter = "$"
+	AtSign      BarCharacter = "@"
+	Percent     BarCharacter = "%"
+	CircumFlex  BarCharacter = "^"
+	And         BarCharacter = "&"
 )
+
+// winsize handles window size.
+type winsize struct {
+	Row    uint16
+	Col    uint16
+	Xpixel uint16
+	Ypixel uint16
+}
 
 // Validation categories
 const (
@@ -29,12 +45,16 @@ const (
 var (
 	validCompleteChars = map[BarCharacter]bool{
 		Hash: true, Asterisk: true, Equal: true, Dash: true,
-		GreaterThan: true, Colon: true, Plus: true, Exclamation: true, Dollar: true,
+		GreaterThan: true, Colon: true, Plus: true, Exclamation: true,
+		DollarSign: true, LessThan: true,
+		And: true, AtSign: true, Percent: true, CircumFlex: true,
 	}
 
 	validIncompleteChars = map[BarCharacter]bool{
 		Empty: true, Hash: true, Asterisk: true, Equal: true,
-		Dash: true, GreaterThan: true, Colon: true, Plus: true, Exclamation: true, Dollar: true,
+		Dash: true, GreaterThan: true, Colon: true, Plus: true,
+		Exclamation: true, DollarSign: true, LessThan: true,
+		And: true, AtSign: true, Percent: true, CircumFlex: true,
 	}
 )
 
@@ -103,11 +123,27 @@ func New(opts ...Option) (*Ravan, error) {
 // progress should be a value between 0.0 and 1.0.
 // When progress is 1.0 (100%), the bar is printed in green.
 func (r *Ravan) Draw(progress float64) {
-	complete := int(progress * float64(r.width))
+	termWidth := getTerminalWidth()
+	if termWidth == 0 {
+		termWidth = r.width // fallback if terminal width cannot be determined
+	}
+
+	// Overhead accounts for extra characters like "[", "]", " 100%"
+	overhead := 7
+	effectiveWidth := r.width
+	if termWidth-overhead < effectiveWidth {
+		effectiveWidth = termWidth - overhead
+		if effectiveWidth < 1 {
+			effectiveWidth = 1
+		}
+	}
+
+	complete := int(progress * float64(effectiveWidth))
 	bar := strings.Repeat(string(r.completeChar), complete) +
-		strings.Repeat(string(r.incompleteChar), r.width-complete)
+		strings.Repeat(string(r.incompleteChar), effectiveWidth-complete)
+
 	if progress >= 1.0 {
-		// Green color: \033[32m ... \033[0m resets color.
+		// Print in green when complete
 		fmt.Printf("\r\033[32m[%s] %.0f%%\033[0m\n", bar, progress*100)
 	} else {
 		fmt.Printf("\r[%s] %.0f%%", bar, progress*100)
@@ -124,4 +160,16 @@ func isValidCharacter(c BarCharacter, charType string) bool {
 	default:
 		return false
 	}
+}
+
+// getTerminalWidth returns the number of columns in the terminal.
+// If an error occurs, it returns 0.
+func getTerminalWidth() int {
+	ws := &winsize{}
+	// Use syscall.Syscall to call the TIOCGWINSZ ioctl on stdout.
+	retCode, _, err := syscall.Syscall(syscall.SYS_IOCTL, os.Stdout.Fd(), uintptr(syscall.TIOCGWINSZ), uintptr(unsafe.Pointer(ws)))
+	if int(retCode) == -1 || err != 0 {
+		return 0 // error: fallback will be used
+	}
+	return int(ws.Col)
 }

@@ -18,9 +18,14 @@ const (
 	Plus        BarCharacter = "+"
 	Dash        BarCharacter = "-"
 	GreaterThan BarCharacter = ">"
+	LessThan    BarCharacter = "<"
 	Colon       BarCharacter = ":"
 	Exclamation BarCharacter = "!"
-	Dollar      BarCharacter = "$"
+	DollarSign  BarCharacter = "$"
+	AtSign      BarCharacter = "@"
+	Percent     BarCharacter = "%"
+	CircumFlex  BarCharacter = "^"
+	And         BarCharacter = "&"
 )
 
 // winsize handles window size.
@@ -40,12 +45,16 @@ const (
 var (
 	validCompleteChars = map[BarCharacter]bool{
 		Hash: true, Asterisk: true, Equal: true, Dash: true,
-		GreaterThan: true, Colon: true, Plus: true, Exclamation: true, Dollar: true,
+		GreaterThan: true, Colon: true, Plus: true, Exclamation: true,
+		DollarSign: true, LessThan: true,
+		And: true, AtSign: true, Percent: true, CircumFlex: true,
 	}
 
 	validIncompleteChars = map[BarCharacter]bool{
 		Empty: true, Hash: true, Asterisk: true, Equal: true,
-		Dash: true, GreaterThan: true, Colon: true, Plus: true, Exclamation: true, Dollar: true,
+		Dash: true, GreaterThan: true, Colon: true, Plus: true,
+		Exclamation: true, DollarSign: true, LessThan: true,
+		And: true, AtSign: true, Percent: true, CircumFlex: true,
 	}
 )
 

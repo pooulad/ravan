@@ -26,7 +26,7 @@ import (
 func main() {
     total := 100
     // if you dont add any option the default values are set. -> ravan.New()
-    r, err := ravan.New(ravan.WithWidth(50), ravan.WithCompleteChar("-"))
+    r, err := ravan.New(ravan.WithWidth(50), ravan.WithCompleteChar(ravan.Equal))
     if err != nil {
         log.Fatal(err)
     }
@@ -43,11 +43,37 @@ func main() {
 
 See [examples](/examples/) directory that added examples of all versions.also you can read the documentation that is in next section.
 
+## Bar characters 🔤
+
+| Name        | Sign |
+| ----------- | ---- |
+| Hash        | "#"  |
+| Asterisk    | "*" |
+| Equal       | "="  |
+| Plus        | "+"  |
+| Dash        | "-"  |
+| GreaterThan | ">"  |
+| LessThan    | "<"  |
+| Colon       | ":"  |
+| Exclamation | "!"  |
+| DollarSign  | "$"  |
+| AtSign      | "@"  |
+| Percent     | "%"  |
+| CircumFlex  | "^"  |
+| And         | "&"  |
+| Empty       | " "  |
+
+📌Empty only available in WithIncompleteChar func.it is obvious that completed bar section can't fill with Empty char.
+
 ## Documentation 📋
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/pooulad/ravan.svg)](https://pkg.go.dev/github.com/pooulad/ravan)
 
 Check latest version please.
+
+## Demo 🖼
+
+![ravan_sample_screenshot](/assets/demo.gif)
 
 ## License 📏
 

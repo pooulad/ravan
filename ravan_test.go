@@ -301,3 +301,71 @@ func TestGetTerminalWidth_Terminal(t *testing.T) {
 		t.Errorf("Expected positive terminal width, got %d", width)
 	}
 }
+
+// TestWithMessageOptionDefaults verifies WithMessage works correctlly with default messages.
+func TestWithMessageOptionDefaults(t *testing.T) {
+	// Create a new Ravan instance with no message override.
+	r, err := New()
+	if err != nil {
+		t.Fatalf("New() error: %v", err)
+	}
+
+	// Check that default messages are set.
+	expectedFailed := "Operation failed"
+	expectedSuccess := "Operation successful"
+
+	if r.message.Failed != expectedFailed {
+		t.Errorf("Expected default Failed message %q, got %q", expectedFailed, r.message.Failed)
+	}
+	if r.message.Success != expectedSuccess {
+		t.Errorf("Expected default Success message %q, got %q", expectedSuccess, r.message.Success)
+	}
+}
+
+// TestWithMessageOptionCustom verifies WithMessage works correctlly with custom messages.
+func TestWithMessageOptionCustom(t *testing.T) {
+	// Create a custom message.
+	customMsg := &Message{
+		Failed:  "Custom failed message",
+		Success: "Custom success message",
+	}
+
+	// Create a new Ravan instance with custom messages.
+	r, err := New(WithMessage(customMsg))
+	if err != nil {
+		t.Fatalf("New(WithMessage) error: %v", err)
+	}
+
+	// Verify that the custom messages are set.
+	if r.message.Failed != customMsg.Failed {
+		t.Errorf("Expected Failed message %q, got %q", customMsg.Failed, r.message.Failed)
+	}
+	if r.message.Success != customMsg.Success {
+		t.Errorf("Expected Success message %q, got %q", customMsg.Success, r.message.Success)
+	}
+}
+
+// TestWithMessageOptionPartial verifies WithMessage works correctlly with custom  messages with only Failed message provided.
+func TestWithMessageOptionPartial(t *testing.T) {
+	// Create a custom message with only Failed message provided.
+	customMsg := &Message{
+		Failed:  "Only custom failed message",
+		Success: "",
+	}
+
+	// Create a new Ravan instance with the partial custom message.
+	r, err := New(WithMessage(customMsg))
+	if err != nil {
+		t.Fatalf("New(WithMessage) error: %v", err)
+	}
+
+	// Expected: custom Failed should override, while Success remains default.
+	if r.message.Failed != customMsg.Failed {
+		t.Errorf("Expected Failed message %q, got %q", customMsg.Failed, r.message.Failed)
+	}
+
+	expectedSuccess := "Operation successful"
+	if r.message.Success != expectedSuccess {
+		t.Errorf("Expected default Success message %q, got %q", expectedSuccess, r.message.Success)
+	}
+}

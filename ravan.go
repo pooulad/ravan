@@ -56,39 +56,26 @@ var (
 		Exclamation: true, DollarSign: true, LessThan: true,
 		And: true, AtSign: true, Percent: true, CircumFlex: true,
 	}
+
+	// colors for messagees
+	successColor = "\033[32m"
+	errorColor   = "\033[31m"
+	resetColor   = "\033[0m"
 )
 
 // Option pattern for configuration
+// You can use:
+//
+//	WithWidth
+//	WithCompleteChar
+//	WithIncompleteChar
+//	WithMessage
 type Option func(*Ravan) error
 
-// Width option
-func WithWidth(w int) Option {
-	return func(r *Ravan) error {
-		r.width = w
-		return nil
-	}
-}
-
-// Complete character option
-func WithCompleteChar(c BarCharacter) Option {
-	return func(r *Ravan) error {
-		if !isValidCharacter(c, CompleteType) {
-			return fmt.Errorf("invalid complete character: %s", c)
-		}
-		r.completeChar = c
-		return nil
-	}
-}
-
-// Incomplete character option
-func WithIncompleteChar(c BarCharacter) Option {
-	return func(r *Ravan) error {
-		if !isValidCharacter(c, IncompleteType) {
-			return fmt.Errorf("invalid incomplete character: %s", c)
-		}
-		r.incompleteChar = c
-		return nil
-	}
+// Message struct for showing with Ravan progress bar
+type Message struct {
+	Failed  string
+	Success string
 }
 
 // Ravan struct
@@ -96,6 +83,7 @@ type Ravan struct {
 	width          int
 	completeChar   BarCharacter
 	incompleteChar BarCharacter
+	message        Message
 }
 
 // New creates a validated Ravan instance
@@ -104,6 +92,10 @@ func New(opts ...Option) (*Ravan, error) {
 		width:          50,    // Default width
 		completeChar:   Equal, // Default complete
 		incompleteChar: Empty, // Default incomplete
+		message: Message{
+			Failed:  "Operation failed",
+			Success: "Operation successful",
+		}, // Default message
 	}
 
 	for _, opt := range opts {
@@ -147,6 +139,88 @@ func (r *Ravan) Draw(progress float64) {
 		fmt.Printf("\r\033[32m[%s] %.0f%%\033[0m\n", bar, progress*100)
 	} else {
 		fmt.Printf("\r[%s] %.0f%%", bar, progress*100)
+	}
+}
+
+// FailMsg shows error (if provided) and/or custom failure message
+// Usage:
+// r.FailMsg()                      // Shows only custom message if set
+// r.FailMsg(err)                   // Shows error + custom message
+// r.FailMsg(err, customMessage)    // Optional: Override default custom message
+func (r *Ravan) FailMsg(err ...interface{}) {
+	var e error
+	customMsg := r.message.Failed // Default to initialized message
+
+	// Parse arguments
+	for _, arg := range err {
+		switch v := arg.(type) {
+		case error:
+			e = v
+		case string:
+			customMsg = v // Allow message override
+		}
+	}
+
+	msg := strings.Builder{}
+	msg.WriteString("\n" + errorColor)
+
+	if e != nil {
+		msg.WriteString(fmt.Sprintf("Error: %v. ", e))
+	}
+
+	if customMsg != "" {
+		msg.WriteString(customMsg)
+	}
+
+	msg.WriteString(resetColor + "\n")
+	fmt.Print(msg.String())
+}
+
+// SuccessMsg prints a success message with successColor.
+func (r *Ravan) SuccessMsg() {
+	fmt.Printf("%sSuccess: %s%s\n", successColor, r.message.Success, resetColor)
+}
+
+// Width option
+func WithWidth(w int) Option {
+	return func(r *Ravan) error {
+		r.width = w
+		return nil
+	}
+}
+
+// Complete character option
+func WithCompleteChar(c BarCharacter) Option {
+	return func(r *Ravan) error {
+		if !isValidCharacter(c, CompleteType) {
+			return fmt.Errorf("invalid complete character: %s", c)
+		}
+		r.completeChar = c
+		return nil
+	}
+}
+
+// Incomplete character option
+func WithIncompleteChar(c BarCharacter) Option {
+	return func(r *Ravan) error {
+		if !isValidCharacter(c, IncompleteType) {
+			return fmt.Errorf("invalid incomplete character: %s", c)
+		}
+		r.incompleteChar = c
+		return nil
+	}
+}
+
+// WithMessage sets the custom messages.
+func WithMessage(msg *Message) Option {
+	return func(r *Ravan) error {
+		if msg.Failed != "" {
+            r.message.Failed = msg.Failed
+        }
+        if msg.Success != "" {
+            r.message.Success = msg.Success
+        }
+		return nil
 	}
 }
 

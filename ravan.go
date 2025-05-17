@@ -2,10 +2,9 @@ package ravan
 
 import (
 	"fmt"
+	"golang.org/x/term"
 	"os"
 	"strings"
-	"syscall"
-	"unsafe"
 )
 
 type BarCharacter string
@@ -215,11 +214,11 @@ func WithIncompleteChar(c BarCharacter) Option {
 func WithMessage(msg *Message) Option {
 	return func(r *Ravan) error {
 		if msg.Failed != "" {
-            r.message.Failed = msg.Failed
-        }
-        if msg.Success != "" {
-            r.message.Success = msg.Success
-        }
+			r.message.Failed = msg.Failed
+		}
+		if msg.Success != "" {
+			r.message.Success = msg.Success
+		}
 		return nil
 	}
 }
@@ -239,11 +238,9 @@ func isValidCharacter(c BarCharacter, charType string) bool {
 // getTerminalWidth returns the number of columns in the terminal.
 // If an error occurs, it returns 0.
 func getTerminalWidth() int {
-	ws := &winsize{}
-	// Use syscall.Syscall to call the TIOCGWINSZ ioctl on stdout.
-	retCode, _, err := syscall.Syscall(syscall.SYS_IOCTL, os.Stdout.Fd(), uintptr(syscall.TIOCGWINSZ), uintptr(unsafe.Pointer(ws)))
-	if int(retCode) == -1 || err != 0 {
-		return 0 // error: fallback will be used
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		return 0
 	}
-	return int(ws.Col)
+	return width
 }

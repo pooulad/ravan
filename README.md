@@ -1,6 +1,6 @@
 # 🏄 Ravan
 
-minimalist, dependency-free progress bar library for Go.
+minimalist, progress bar library for Go.
 
 the package name(**Ravan**) means smooth or flowing in persian. Exactly the same as the progress bar.
 
